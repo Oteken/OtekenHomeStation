@@ -38,13 +38,15 @@ LiquidCrystal_I2C  lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin
 
 DHT dht(DHTPIN, DHTTYPE);
 
-int loopDelaySeconds = 5;
+int loopDelaySeconds = 2;
 const char *ssid = "Classified WiFi DO NOT CONNECT";
 const char *password = "71Pekince71";
 String httpPostUrl = "http://iot-open-server.herokuapp.com/data";
 String apiToken = "2673e9f43ff7b476b2a89337";
 
 HTTPClient http;
+
+int printSwitch = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -98,7 +100,24 @@ void loop() {
   
   postData(dataToSend);
   lcd.clear();
-  printHumidity(humidity);
+  switch(printSwitch) {
+    case 0:
+      printHumidity(humidity);
+      printSwitch++;
+      break;
+    case 1:
+      printTemperature(temperature);
+      printSwitch++;
+      break;
+    case 2:
+      printLightIntensity(lightIntensity);
+      printSwitch++;
+      break;
+    case 3:
+      printWindForce(windForce);
+      printSwitch = 0;
+      break;
+  }
   delay(loopDelaySeconds * 1000);
 }
 
