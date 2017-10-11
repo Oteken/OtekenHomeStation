@@ -39,8 +39,8 @@ LiquidCrystal_I2C  lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin
 DHT dht(DHTPIN, DHTTYPE);
 
 int loopDelaySeconds = 2;
-const char *ssid = "Classified WiFi DO NOT CONNECT";
-const char *password = "71Pekince71";
+const char *ssid = "Wi-Fi-netwerk van Tim";
+const char *password = "123456789wifivantim";
 String httpPostUrl = "http://iot-open-server.herokuapp.com/data";
 String apiToken = "2673e9f43ff7b476b2a89337";
 
