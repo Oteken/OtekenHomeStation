@@ -44,11 +44,12 @@ float temperature = 12.00;
 float lightIntensity = 14.00;
 float windForce = 16.00;
 
-int loopDelaySeconds = 5;
+int loopDelaySeconds = 2;
 int bluetoothSendDelaySeconds = 1;
 
 void setup() {
   Serial.begin(9600);
+  
   bluetoothSerial.begin(9600);
   dht.begin();
   photocell.setPhotocellPositionOnGround(false);

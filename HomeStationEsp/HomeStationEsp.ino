@@ -34,6 +34,9 @@ String bluetoothNextData = "*";
 String dataArray[100];
 int dataArrayIndex = 0;
 
+float windForceArray[4];
+int windForceArrayIndex = 0;
+
 const char *ssid = "Classified WiFi DO NOT CONNECT";
 const char *password = "71Pekince71";
 String httpPostUrl = "http://iot-open-server.herokuapp.com/data";
@@ -57,10 +60,11 @@ String temperatureType = floatType;
 String lightType = floatType;
 String windType = floatType;
 // Values of the variables
-float humidity = 0;
-float temperature = 0;
-float lightIntensity = 0;
-float windForce = 0;
+float defaultFloat = -10.00;
+float humidity = defaultFloat;
+float temperature = defaultFloat;
+float lightIntensity = defaultFloat;
+float windForce = defaultFloat;
 
 void setup() {
   Serial.begin(9600);
@@ -75,10 +79,6 @@ void setup() {
 
 void loop() {
   processNextData();
-  Serial.println(dataArrayIndex);
-  Serial.println(humidity);
-  Serial.println(temperature);
-  Serial.println(lightIntensity);  
   readBluetoothData();
   delay(500);
   sendDataToServer();
@@ -115,26 +115,30 @@ void sendDataToServer(){
   
   JsonArray& data = jsonRoot.createNestedArray("data");
 
-  JsonObject& humidityObject = jsonBuffer.createObject();
-  humidityObject["key"] = "humidity";
-  humidityObject["value"] = humidity;
-
-  JsonObject& temperatureObject = jsonBuffer.createObject();
-  temperatureObject["key"] = "temperature";
-  temperatureObject["value"] = temperature;
-  
-  JsonObject& lightIntensityObject = jsonBuffer.createObject();
-  lightIntensityObject["key"] = "lightIntensity";
-  lightIntensityObject["value"] = lightIntensity;
-  
-  JsonObject& windForceObject = jsonBuffer.createObject();
-  windForceObject["key"] = "windForce";
-  windForceObject["value"] = windForce;
-
-  data.add(humidityObject);
-  data.add(temperatureObject);
-  data.add(lightIntensityObject);
-  data.add(windForceObject);
+  if(humidity != defaultFloat){
+    JsonObject& humidityObject = jsonBuffer.createObject();
+    humidityObject["key"] = "humidity";
+    humidityObject["value"] = humidity;
+    data.add(humidityObject);
+  }
+  if(temperature != defaultFloat){
+    JsonObject& temperatureObject = jsonBuffer.createObject();
+    temperatureObject["key"] = "temperature";
+    temperatureObject["value"] = temperature;
+    data.add(temperatureObject);
+  }
+  if(lightIntensity != defaultFloat){
+    JsonObject& lightIntensityObject = jsonBuffer.createObject();
+    lightIntensityObject["key"] = "lightIntensity";
+    lightIntensityObject["value"] = lightIntensity;
+    data.add(lightIntensityObject);
+  }
+  if(windForce != defaultFloat){
+    JsonObject& windForceObject = jsonBuffer.createObject();
+    windForceObject["key"] = "windForce";
+    windForceObject["value"] = windForce;
+    data.add(windForceObject);
+  }
 
   String dataToSend;
   jsonRoot.printTo(dataToSend);
