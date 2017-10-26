@@ -22,8 +22,46 @@
 #define D5_pin  5
 #define D6_pin  6
 #define D7_pin  7
-#define TXDPIN 15
-#define RXDPIN 13
+#define TXDPIN 12
+#define RXDPIN 14
+#define buzzer 10
+
+#define NOTE_C4  262   //Defining note frequency
+#define NOTE_D4  294
+#define NOTE_E4  330
+#define NOTE_F4  349
+#define NOTE_G4  392
+#define NOTE_A4  440
+#define NOTE_B4  494
+#define NOTE_C5  523
+#define NOTE_D5  587
+#define NOTE_E5  659
+#define NOTE_F5  698
+#define NOTE_G5  784
+#define NOTE_A5  880
+#define NOTE_B5  988
+
+int notesDay[] = {       //Note of the song, 0 is a rest/pulse
+   NOTE_C4, NOTE_D4, NOTE_E4, NOTE_F4, 
+   NOTE_G4, NOTE_A4, NOTE_B4
+};
+
+int durationDay[] = {         //duration of each note (in ms) Quarter Note is set to 250 ms
+  125, 125, 125, 125, 125, 
+  125, 125
+};
+
+int notesNight[] = {       //Note of the song, 0 is a rest/pulse
+   NOTE_B4, NOTE_A4, NOTE_G4, NOTE_F4, 
+   NOTE_E4, NOTE_D4, NOTE_C4
+};
+
+int durationNight[] = {         //duration of each note (in ms) Quarter Note is set to 250 ms
+  125, 125, 125, 125, 125, 
+  125, 125
+};
+
+int songspeed = 1;
 
 SoftwareSerial bluetoothSerial(TXDPIN, RXDPIN); // RX, TX
 LiquidCrystal_I2C  lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
@@ -36,12 +74,20 @@ int dataArrayIndex = 0;
 
 float windForceArray[4];
 int windForceArrayIndex = 0;
+int motorMaxRpm = 11500;
+int motorMaxVoltage = 6;
+int motorMinVoltage = 3;
+// Taking a linear formula for the relation between Rpm and voltage.
+// 11500/(6-3) = 3833.3 rpm per voltage.
+// 5/1024 = 0.0049 volt per bit in analog input
+float rpmPerBit = (5.00/1024.00) * (11500.00 / (6.00-3.00));
 
-const char *ssid = "Classified WiFi DO NOT CONNECT";
-const char *password = "71Pekince71";
+const char *ssid = "Wifi ssid";
+const char *password = "Wifi password";
 String httpPostUrl = "http://iot-open-server.herokuapp.com/data";
 String apiToken = "2673e9f43ff7b476b2a89337";
 HTTPClient http;
+String imageUrl = "https://lh4.googleusercontent.com/28cyjr25CPIp9u4okR8HlpTsum4HXVXp0zjjiLmcxYi6ZQzLYexfs1L5D0UnrX1y0yJhudzNXwOVQJY=w1366-h662-rw";
 int printSwitch = 0;
 
 // Types that variables can be. These are needed for sending of data via bluetooth.
@@ -65,6 +111,7 @@ float humidity = defaultFloat;
 float temperature = defaultFloat;
 float lightIntensity = defaultFloat;
 float windForce = defaultFloat;
+boolean dark = false;
 
 void setup() {
   Serial.begin(9600);
@@ -83,6 +130,34 @@ void loop() {
   delay(500);
   sendDataToServer();
   printToLcd();
+  actuator();
+}
+
+void actuator(){
+  if(dark && lightIntensity > 50){
+    playSongDay();
+    dark = false;
+  }
+  if(!dark && lightIntensity < 50){
+    playSongNight();
+    dark = true;
+  }
+}
+
+void playSongDay(){
+  for (int i=0;i<7;i++){              //203 is the total number of music notes in the song
+    int wait = durationDay[i] * songspeed;
+    tone(buzzer,notesDay[i],wait);          //tone(pin,frequency,duration)
+    delay(wait);
+  }
+}
+
+void playSongNight(){
+    for (int i=0;i<7;i++){              //203 is the total number of music notes in the song
+    int wait = durationNight[i] * songspeed;
+    tone(buzzer,notesNight[i],wait);          //tone(pin,frequency,duration)
+    delay(wait);
+  }
 }
 
 void printToLcd(){
@@ -140,6 +215,11 @@ void sendDataToServer(){
     data.add(windForceObject);
   }
 
+  JsonObject& imageObject = jsonBuffer.createObject();
+  imageObject["key"] = "image";
+  imageObject["value"] = imageUrl;
+  data.add(imageObject);
+
   String dataToSend;
   jsonRoot.printTo(dataToSend);
 
@@ -154,15 +234,19 @@ void printVariable(String dataArrayVariable){
 }
 
 void readBluetoothData(){
+    Serial.println("A");
   if(bluetoothSerial.available()){
     if((String)(char)bluetoothSerial.peek() != bluetoothNextVariable){
       readBluetoothDataUntilNextVariable();
     } else {
       if(dataArray[dataArrayIndex].length() > 0){
-        dataArrayIndex++;
-        dataArray[dataArrayIndex] = "";
-        Serial.println("New Data!");
-        printVariable(dataArray[dataArrayIndex - 1]);
+        if(!isDataCorrupt(dataArray[dataArrayIndex])){
+          dataArrayIndex++;
+          dataArray[dataArrayIndex] = "";
+          printVariable(dataArray[dataArrayIndex - 1]);
+        } else {
+          dataArray[dataArrayIndex] = "";
+        }
       }
       bluetoothSerial.read();
     }
@@ -269,6 +353,39 @@ void processNextData(){
   }
 }
 
+boolean isDataCorrupt(String data){
+  int index = data.indexOf(bluetoothNextData);
+  if(index > -1){
+    int indexOne = data.indexOf(bluetoothNextData, index + 1);
+    if(indexOne - index < 1){
+      return true;
+    }
+    if(indexOne > -1){
+      int indexTwo = data.indexOf(bluetoothNextData, indexOne + 1);
+      if(indexTwo - indexOne < 1){
+        return true;
+      }
+      if(indexTwo > -1){
+        if(!(indexTwo != (data.length()-1)))
+          return true;
+      } else {
+        return true;
+      }
+    } else {
+      return true;
+    }
+  } else {
+    return true;
+  }
+  index = data.indexOf("Name");
+  if(!index)
+    return true;
+  if(data.indexOf(intType) == -1 && data.indexOf(floatType) == -1 && data.indexOf(stringType) == -1)
+    return true;
+  return false;
+}
+
+
 void connectToWifi() {
    WiFi.begin ( ssid, password );
   
@@ -327,4 +444,3 @@ float printWindForce(float windForce){
   lcd.print(windForce);
   lcd.setCursor(1, 1);
 }
-
